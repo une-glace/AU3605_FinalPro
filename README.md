@@ -1,6 +1,6 @@
 # DIPfp 视网膜图像处理项目
 
-本项目在 `e:\sync\courses\AU3605\FinalPro\DIPfp` 目录下，主要用于完成课程大作业中视网膜图像的自动处理，包括：
+本项目在 `AU3605_FinalPro` 目录下，主要用于完成课程大作业中视网膜图像的自动处理，包括：
 
 - 视盘（Optic Disc, OD）与黄斑（Fovea, FCT）中心检测（第一个模型）  
 - 血管分割（第二个模型，数据与脚本结构已预留）  
@@ -111,10 +111,10 @@ OD/FCT 模型使用的训练和测试数据已经整理在：
 
 ### 3.2 在本机（CPU 或单 GPU）训练
 
-进入 `DIPfp` 目录：
+进入 `AU3605_FinalPro` 目录：
 
 ```bash
-cd e:\sync\courses\AU3605\FinalPro\DIPfp
+cd AU3605_FinalPro
 python train_od_fct.py
 ```
 
@@ -175,43 +175,25 @@ CUDA_VISIBLE_DEVICES=0,1,2,3 python train_od_fct.py
 
 ### 3.5 wandb 可视化
 
-训练脚本不会在运行过程中弹出交互式登录窗口，只在检测到环境变量 `WANDB_API_KEY` 时自动启用 wandb。
+如果希望在线监控训练曲线，请确保已安装 `wandb` 并在本地登录。
 
-1. 安装 wandb：
+1. 安装并登录 wandb：
 
 ```bash
 pip install wandb
+wandb login
+# 按提示输入你的 API Key (从 https://wandb.ai/authorize 获取)
 ```
 
-2. 在终端中设置 `WANDB_API_KEY`（从 https://wandb.ai/authorize 获取你的 API Key）：
-
-- Linux / macOS（bash/zsh）：
-
-  ```bash
-  export WANDB_API_KEY="你的_wandb_API_Key"
-  ```
-
-- Windows PowerShell：
-
-  ```powershell
-  $env:WANDB_API_KEY="你的_wandb_API_Key"
-  ```
-
-3. 正常运行训练脚本：
+2. 运行训练脚本：
 
 ```bash
 python train_od_fct.py
 ```
 
-脚本会在检测到 `WANDB_API_KEY` 且已安装 wandb 时：
+脚本检测到 `wandb` 库且已登录后，会自动初始化项目 `project="retina_od_fct"` 并记录训练过程。
 
-- 登录并初始化项目：`project="retina_od_fct"`  
-- 每个 epoch 记录：
-  - `train_loss`
-  - `val_loss`
-  - `epoch`
-
-如果未设置 `WANDB_API_KEY` 或未安装 `wandb`，则自动跳过所有 wandb 相关调用，只在本地打印日志。
+如果未安装 `wandb` 或初始化失败，脚本将自动跳过 wandb 相关功能，仅在本地打印日志。
 
 ### 3.6 模型测试与评估
 
@@ -296,7 +278,7 @@ python tools/decompress_gz_dataset.py
 
 1. 准备环境（Conda + PyTorch + OpenCV + pandas + tqdm）。  
 2. 确认 `dataset/OD_FCT` 下的 `train` 和 `test` 图像与 `targets.csv` 完整无误。  
-3. 在 `DIPfp` 根目录运行：
+3. 在 `AU3605_FinalPro` 根目录运行：
    - 本机 CPU / 单卡：`python train_od_fct.py`  
    - 指定 GPU：`CUDA_VISIBLE_DEVICES=4 python train_od_fct.py`  
    - 单机多卡：`CUDA_VISIBLE_DEVICES=0,1,2,3 python train_od_fct.py`  

@@ -71,9 +71,8 @@ if __name__ == '__main__':
 
     wandb_enabled = False
     if _use_wandb:
-        wandb_api_key = os.environ.get("WANDB_API_KEY")
-        if wandb_api_key:
-            wandb.login(key=wandb_api_key)
+        try:
+            # 尝试初始化 wandb（需要提前运行 wandb login 或配置好环境变量）
             wandb.init(
                 project="retina_od_fct",
                 config={
@@ -85,6 +84,9 @@ if __name__ == '__main__':
                 },
             )
             wandb_enabled = True
+        except Exception as e:
+            print(f" ** Wandb init failed (ignored): {e}")
+            wandb_enabled = False
 
     print(" ** Start training OD/FCT model...")
 
