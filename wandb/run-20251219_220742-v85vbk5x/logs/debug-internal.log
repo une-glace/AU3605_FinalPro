@@ -1,0 +1,14 @@
+{"time":"2025-12-19T22:07:43.045864+08:00","level":"INFO","msg":"stream: starting","core version":"0.23.1"}
+{"time":"2025-12-19T22:07:45.2681239+08:00","level":"INFO","msg":"stream: created new stream","id":"v85vbk5x"}
+{"time":"2025-12-19T22:07:45.2681239+08:00","level":"INFO","msg":"handler: started","stream_id":"v85vbk5x"}
+{"time":"2025-12-19T22:07:45.2703624+08:00","level":"INFO","msg":"stream: started","id":"v85vbk5x"}
+{"time":"2025-12-19T22:07:45.2703624+08:00","level":"INFO","msg":"sender: started","stream_id":"v85vbk5x"}
+{"time":"2025-12-19T22:07:45.2703624+08:00","level":"INFO","msg":"writer: started","stream_id":"v85vbk5x"}
+{"time":"2025-12-19T22:09:40.2895403+08:00","level":"INFO","msg":"api: retrying error","error":"Post \"https://api.wandb.ai/files/uneglaceee/retina_od_fct/v85vbk5x/file_stream\": http2: client conn could not be established"}
+{"time":"2025-12-19T22:27:04.6449961+08:00","level":"INFO","msg":"api: retrying error","error":"Post \"https://api.wandb.ai/files/uneglaceee/retina_od_fct/v85vbk5x/file_stream\": read tcp 10.180.10.0:59414->35.186.228.49:443: wsarecv: An existing connection was forcibly closed by the remote host."}
+{"time":"2025-12-19T22:38:09.8830196+08:00","level":"INFO","msg":"fileTransfer: Close: file transfer manager closed"}
+{"time":"2025-12-19T22:38:12.3182734+08:00","level":"INFO","msg":"handler: operation stats","stats":{}}
+{"time":"2025-12-19T22:38:12.3253153+08:00","level":"INFO","msg":"stream: closing","id":"v85vbk5x"}
+{"time":"2025-12-19T22:38:12.3253153+08:00","level":"INFO","msg":"handler: closed","stream_id":"v85vbk5x"}
+{"time":"2025-12-19T22:38:12.3258322+08:00","level":"INFO","msg":"sender: closed","stream_id":"v85vbk5x"}
+{"time":"2025-12-19T22:38:12.3258322+08:00","level":"INFO","msg":"stream: closed","id":"v85vbk5x"}
