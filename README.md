@@ -15,7 +15,10 @@
 根目录：`e:\sync\courses\AU3605\FinalPro\DIPfp`
 
 - `train_od_fct.py`  
-  OD/FCT 检测模型的训练入口脚本（支持 wandb、单卡、多卡 `DataParallel`）。
+  OD/FCT 检测模型的训练入口脚本（支持 wandb、单卡、多卡 `DataParallel`、进度条显示）。
+
+- `test_od_fct.py`  
+  OD/FCT 模型的测试脚本，加载训练好的模型并在测试集上进行评估和可视化。
 
 - `models/`  
   - `od_fct_net.py`  
@@ -46,6 +49,12 @@
     - `adam_hoover/`：Adam Hoover 数据。  
     - `other/`：其他来源的数据。  
     后续可在此基础上实现 `vessel_seg` 的 Dataset 与训练脚本。
+
+- `logs/`  
+  存放训练过程中保存的模型权重（`od_fct_model_best.pth`, `od_fct_model_latest.pth`）。
+
+- `results/`  
+  运行测试脚本 `test_od_fct.py` 后生成的可视化结果（带有预测点和真实点的对比图）。
 
 - `utils/`  
   - `__init__.py`：提供 `color_normalization` 函数，利用 `ref_img.jpg` 做颜色风格归一化。  
@@ -79,7 +88,7 @@ pip install wandb  # 如需在线可视化
 
 ---
 
-## 3. 第一个模型：OD/FCT 中心检测训练
+## 3. 第一个模型：OD/FCT 中心检测训练与测试
 
 ### 3.1 数据要求
 
@@ -204,6 +213,35 @@ python train_od_fct.py
 
 如果未设置 `WANDB_API_KEY` 或未安装 `wandb`，则自动跳过所有 wandb 相关调用，只在本地打印日志。
 
+### 3.6 模型测试与评估
+
+训练完成后，可以使用 `test_od_fct.py` 脚本加载最佳模型并在测试集上进行评估。
+
+**基本用法：**
+
+```bash
+python test_od_fct.py
+```
+
+默认行为：
+- 加载 `logs/od_fct_model_best.pth`。
+- 在测试集上计算 OD 和 Fovea 的平均欧氏距离误差。
+- 将前 20 张测试图片的可视化结果保存到 `results/` 目录。
+  - **绿色点**：真实坐标 (Ground Truth)
+  - **红色点**：预测坐标 (Prediction)
+
+**高级用法：**
+
+指定模型路径或设备：
+
+```bash
+# 指定加载最新模型
+python test_od_fct.py --model_path logs/od_fct_model_latest.pth
+
+# 强制使用 CPU
+python test_od_fct.py --device cpu
+```
+
 ---
 
 ## 4. 第二个模型：血管分割（预留说明）
@@ -264,5 +302,6 @@ python tools/decompress_gz_dataset.py
    - 单机多卡：`CUDA_VISIBLE_DEVICES=0,1,2,3 python train_od_fct.py`  
 4. 如需在线监控训练曲线，安装 wandb 并设置 `WANDB_API_KEY` 后再次运行训练脚本。  
 5. 训练完成后，在 `logs/` 中获取最佳模型权重 `od_fct_model_best.pth`。
+6. 运行 `python test_od_fct.py` 评估模型性能并查看 `results/` 下的可视化效果。
 
 第二个模型（血管分割）在整理好 `dataset/vessel_seg` 结构后，可以按照第一模型的模式增添相应的 Dataset、模型和训练脚本。
