@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
-from tqdm import trange
+from tqdm import tqdm
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
@@ -88,7 +88,11 @@ if __name__ == '__main__':
     for epoch in range(num_epochs):
         train_loss = 0.0
         model.train()
-        for images, labels in train_loader:
+        for images, labels in tqdm(
+            train_loader,
+            desc=f"Train Epoch {epoch+1}/{num_epochs}",
+            leave=False,
+        ):
             images, labels = images.to(device), labels.to(device)
             optimizer.zero_grad()
             outputs = model(images)
@@ -131,4 +135,3 @@ if __name__ == '__main__':
         wandb.finish()
 
     print("OD/FCT training complete.")
-
