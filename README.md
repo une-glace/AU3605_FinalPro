@@ -1,4 +1,4 @@
-# DIPfp 视网膜图像处理项目
+# AU3605_FinalPro 视网膜图像处理项目
 
 本项目在 `AU3605_FinalPro` 目录下，主要用于完成课程大作业中视网膜图像的自动处理，包括：
 
@@ -12,7 +12,7 @@
 
 ## 1. 目录结构
 
-根目录：`e:\sync\courses\AU3605\FinalPro\DIPfp`
+根目录：`AU3605_FinalPro`
 
 - `train_od_fct.py`  
   OD/FCT 检测模型的训练入口脚本（支持 wandb、单卡、多卡 `DataParallel`、进度条显示）。
@@ -255,7 +255,7 @@ python test_od_fct.py --device cpu
 - 从指定根目录开始，递归查找所有以 `.gz` 结尾的文件，并在同一目录下解压为同名但不带 `.gz` 的文件。  
 - 如果解压目标文件已存在且 `overwrite=False`，则跳过。
 
-示例（从 `DIPfp` 根目录执行）：
+示例（从 `AU3605_FinalPro` 根目录执行）：
 
 ```bash
 python tools/decompress_gz_dataset.py
