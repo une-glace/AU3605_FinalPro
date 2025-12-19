@@ -69,17 +69,22 @@ if __name__ == '__main__':
             state_dict = torch.load(pretrained_path, map_location=device)
             model.load_state_dict(state_dict)
 
+    wandb_enabled = False
     if _use_wandb:
-        wandb.init(
-            project="retina_od_fct",
-            config={
-                "num_epochs": num_epochs,
-                "batch_size": batch_size,
-                "learning_rate": learning_rate,
-                "train_size": len(train_dataset),
-                "val_size": len(val_dataset),
-            },
-        )
+        wandb_api_key = os.environ.get("WANDB_API_KEY")
+        if wandb_api_key:
+            wandb.login(key=wandb_api_key)
+            wandb.init(
+                project="retina_od_fct",
+                config={
+                    "num_epochs": num_epochs,
+                    "batch_size": batch_size,
+                    "learning_rate": learning_rate,
+                    "train_size": len(train_dataset),
+                    "val_size": len(val_dataset),
+                },
+            )
+            wandb_enabled = True
 
     print(" ** Start training OD/FCT model...")
 
@@ -116,7 +121,7 @@ if __name__ == '__main__':
 
         print(f"Epoch {epoch+1}/{num_epochs}, Train Loss: {avg_train_loss:.4f}, Val Loss: {avg_val_loss:.4f}")
 
-        if _use_wandb:
+        if wandb_enabled:
             wandb.log(
                 {
                     "epoch": epoch + 1,
@@ -131,7 +136,7 @@ if __name__ == '__main__':
             torch.save(_get_state_dict(model), os.path.join(log_dir, 'od_fct_model_best.pth'))
             print(f"  New best OD/FCT model saved! (Val Loss: {best_val_loss:.4f})")
 
-    if _use_wandb:
+    if wandb_enabled:
         wandb.finish()
 
     print("OD/FCT training complete.")

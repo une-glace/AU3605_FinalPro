@@ -166,28 +166,43 @@ CUDA_VISIBLE_DEVICES=0,1,2,3 python train_od_fct.py
 
 ### 3.5 wandb 可视化
 
-1. 安装并登录：
+训练脚本不会在运行过程中弹出交互式登录窗口，只在检测到环境变量 `WANDB_API_KEY` 时自动启用 wandb。
+
+1. 安装 wandb：
 
 ```bash
 pip install wandb
-wandb login
 ```
 
-2. 正常运行训练脚本：
+2. 在终端中设置 `WANDB_API_KEY`（从 https://wandb.ai/authorize 获取你的 API Key）：
+
+- Linux / macOS（bash/zsh）：
+
+  ```bash
+  export WANDB_API_KEY="你的_wandb_API_Key"
+  ```
+
+- Windows PowerShell：
+
+  ```powershell
+  $env:WANDB_API_KEY="你的_wandb_API_Key"
+  ```
+
+3. 正常运行训练脚本：
 
 ```bash
 python train_od_fct.py
 ```
 
-脚本会自动：
+脚本会在检测到 `WANDB_API_KEY` 且已安装 wandb 时：
 
-- 初始化项目：`project="retina_od_fct"`  
+- 登录并初始化项目：`project="retina_od_fct"`  
 - 每个 epoch 记录：
   - `train_loss`
   - `val_loss`
   - `epoch`
 
-如果 wandb 未安装，则自动跳过所有 wandb 相关调用。
+如果未设置 `WANDB_API_KEY` 或未安装 `wandb`，则自动跳过所有 wandb 相关调用，只在本地打印日志。
 
 ---
 
@@ -247,8 +262,7 @@ python tools/decompress_gz_dataset.py
    - 本机 CPU / 单卡：`python train_od_fct.py`  
    - 指定 GPU：`CUDA_VISIBLE_DEVICES=4 python train_od_fct.py`  
    - 单机多卡：`CUDA_VISIBLE_DEVICES=0,1,2,3 python train_od_fct.py`  
-4. 如需在线监控训练曲线，安装并登录 wandb 后再次运行训练脚本。  
+4. 如需在线监控训练曲线，安装 wandb 并设置 `WANDB_API_KEY` 后再次运行训练脚本。  
 5. 训练完成后，在 `logs/` 中获取最佳模型权重 `od_fct_model_best.pth`。
 
 第二个模型（血管分割）在整理好 `dataset/vessel_seg` 结构后，可以按照第一模型的模式增添相应的 Dataset、模型和训练脚本。
-
