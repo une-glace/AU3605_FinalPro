@@ -1,3 +1,5 @@
 wandb/
 __pycache__/
 *.pyc
+.vscode/
+.mypy_cache/
