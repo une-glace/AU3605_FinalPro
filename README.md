@@ -1,12 +1,14 @@
 # AU3605_FinalPro 视网膜图像处理项目
 
-本项目在 `AU3605_FinalPro` 目录下，主要用于完成课程大作业中视网膜图像的自动处理，包括：
+本项目主要覆盖以下 5 个任务（对应课程大作业的核心流程）：
 
-- 视盘（Optic Disc, OD）与黄斑（Fovea, FCT）中心检测（第一个模型）  
-- 血管分割（第二个模型，数据与脚本结构已预留）  
-- 数据预处理工具（颜色归一化、批量解压、Adam Hoover 数据整理等）
+1. 视盘中心检测（OD Center）
+2. 黄斑中心检测（Fovea Center）
+3. 颜色归一化、空域对齐（相对容易）
+4. 血管分割（Vessel Segmentation）
+5. 血管区域光滑填充（去血管 + Inpainting）
 
-下面只说明当前已经打通的第一阶段（OD/FCT 检测）和整体框架，方便在本机或实验室服务器上使用。
+下文按上述任务给出目录结构与脚本用法，默认在 `AU3605_FinalPro` 目录下运行命令。
 
 ---
 
@@ -43,12 +45,10 @@
     - `train/targets.csv`：训练标签（CSV 中列为 `ID, OD_X, OD_Y, Fovea_X, Fovea_Y`）。  
     - `test/images/IDRiD_XXX.jpg`：测试/验证图像。  
     - `test/targets.csv`：测试/验证标签。
-  - `vessel_seg/`（预留）  
-    为第二个模型（血管分割）预留的数据根目录，建议按来源分为三个子目录，例如：  
-    - `normal/`：正常视网膜图像及对应血管标注。  
-    - `adam_hoover/`：Adam Hoover 数据。  
-    - `other/`：其他来源的数据。  
-    后续可在此基础上实现 `vessel_seg` 的 Dataset 与训练脚本。
+  - `Vessel/`  
+    第二个模型（血管分割）使用的数据根目录（已整理）：  
+    - `training/`：训练集（按数据来源分子目录）。  
+    - `test/`：测试/验证集（统一放在 `images/` 与 `targets/` 下）。
 
 - `logs/`  
   存放训练过程中保存的模型权重（`od_fct_model_best.pth`, `od_fct_model_latest.pth`）。
@@ -166,9 +166,12 @@ python train_od_fct.py --epochs 200 --batch-size 16 --lr 5e-5 --weight-decay 1e-
 - `--lr`：学习率  
 - `--weight-decay`：L2 正则化强度  
 - `--num-workers`：DataLoader 使用的进程数  
+- `--device`：运行设备（`auto/cpu/cuda`，默认 `auto`，自动优先用 GPU）  
 - `--lr-scheduler`：学习率调度方式（`none` 或 `step`）  
 - `--step-size`：StepLR 的步长（多少个 epoch 衰减一次）  
 - `--gamma`：每次衰减的比例  
+- `--load-pretrained`：是否加载预训练权重（flag，默认不启用）  
+- `--pretrained-path`：预训练权重路径（配合 `--load-pretrained` 使用，默认 `None`）
 
 ### 3.3 使用单张指定 GPU 训练
 
@@ -257,6 +260,11 @@ python test_od_fct.py --model_path logs/od_fct_model_latest.pth
 python test_od_fct.py --device cpu
 ```
 
+参数说明：
+
+- `--model_path`：加载的 OD/FCT 模型权重路径（默认 `logs/od_fct_model_best.pth`）  
+- `--device`：运行设备（`cuda` 或 `cpu`，默认 `cuda`；若本机无 CUDA 会自动回退到 `cpu`）
+
 ---
 
 ## 4. 第二个模型：血管分割
@@ -306,6 +314,19 @@ python train_vessel_seg.py --device cpu --epochs 40 --batch-size 2 --img-size 25
 
 如需快速小测试，可适当减小 `--epochs`（例如 5 或 10）来验证流程。
 
+参数说明：
+
+- `--epochs`：训练轮数（默认 `80`）  
+- `--batch-size`：批大小（默认 `4`）  
+- `--img-size`：输入图像缩放到的边长（默认 `256`，实际输入为 `img-size×img-size`）  
+- `--lr`：学习率（默认 `1e-4`）  
+- `--weight-decay`：权重衰减（默认 `1e-4`）  
+- `--num-workers`：DataLoader 使用的进程数（默认 `2`）  
+- `--device`：运行设备（`auto/cpu/cuda`，默认 `auto`，自动优先用 GPU）  
+- `--lr-scheduler`：学习率调度方式（`none` 或 `step`，默认 `step`）  
+- `--step-size`：StepLR 的步长（默认 `30`）  
+- `--gamma`：每次衰减的比例（默认 `0.1`）
+
 训练过程中会自动：
 
 - 读取 `dataset/Vessel/training` 作为训练集；  
@@ -341,6 +362,53 @@ python test_vessel_seg.py --device cpu
 python test_vessel_seg.py --model_path logs/vessel_seg_model_latest.pth --device cpu
 ```
 
+参数说明：
+
+- `--model_path`：加载的血管分割模型权重路径（默认 `logs/vessel_seg_model_best.pth`）  
+- `--device`：运行设备（`cuda` 或 `cpu`，默认 `cuda`；若本机无 CUDA 会自动回退到 `cpu`）
+
+### 4.4 血管区域光滑填充（去血管 + Inpainting）
+
+在血管分割得到血管区域后，可以进一步对血管区域做光滑填充，从而得到“去血管”的结果图。
+
+脚本：`vessel_inpaint.py`
+
+基本用法：
+
+```bash
+python vessel_inpaint.py --device cpu
+```
+
+默认行为：
+
+- 输入目录：`dataset/Vessel/test/images`（或传入 `dataset/Vessel/test` 时自动找到 `images/` 子目录）
+- 加载模型：`logs/vessel_seg_model_best.pth`
+- 输出目录：`results_vessel_inpaint/`（如不存在会自动创建）
+- 每张图输出一张三联图（`*_vessel_inpaint.jpg`）：
+  - 左：原图
+  - 中：原图叠加预测血管（细红线透明叠加）
+  - 右：对血管区域做 inpaint 后的结果
+
+常用参数：
+
+```bash
+python vessel_inpaint.py --input-dir dataset/Vessel/test --output-dir results_vessel_inpaint --model-path logs/vessel_seg_model_best.pth --threshold 0.5 --dilate 2 --inpaint-radius 3 --limit 0
+```
+
+参数说明：
+
+- `--input-dir`：输入目录（默认 `dataset/Vessel/test`；若存在 `images/` 子目录会自动读取 `images/`）  
+- `--output-dir`：输出目录（默认 `results_vessel_inpaint`，不存在会自动创建）  
+- `--model-path`：血管分割模型权重（默认 `logs/vessel_seg_model_best.pth`）  
+- `--device`：运行设备（`auto/cpu/cuda`，默认 `auto`，自动优先用 GPU）  
+- `--img-size`：推理时缩放到的边长（默认 `256`）  
+- `--threshold`：血管二值化阈值（默认 `0.5`，越大预测血管越“保守”）  
+- `--dilate`：对用于修补的血管 mask 做膨胀的半径（默认 `2`；只影响右图的 inpaint 区域，不影响中间红线显示）  
+- `--overlay-alpha`：中间图红色血管叠加透明度（默认 `0.45`）  
+- `--inpaint-radius`：OpenCV inpaint 半径（默认 `3`；越大修补越“平滑/模糊”）  
+- `--inpaint-method`：inpaint 方法（`telea` 或 `ns`，默认 `telea`）  
+- `--limit`：最多处理多少张图片（默认 `0` 表示不限制）
+
 ---
 
 ## 5. 数据处理工具脚本
@@ -361,6 +429,14 @@ python test_vessel_seg.py --model_path logs/vessel_seg_model_latest.pth --device
 python tools/decompress_gz_dataset.py
 ```
 
+脚本内参数说明（无命令行参数，直接在代码里配置）：
+
+- `decompress_gz_root(root_dir, overwrite=False)`  
+  - `root_dir`：要递归查找并解压 `.gz` 的根目录  
+  - `overwrite`：若目标文件已存在，是否覆盖（默认 `False`，不覆盖并跳过）
+
+脚本默认会将 `root_dir` 设为 `tools/` 的上一级目录（即整个 `DIPfp`），如需只处理某个数据目录，可在脚本末尾修改 `target_dir`。
+
 ### 5.2 整理 Adam Hoover PPM 图像和标注
 
 脚本：`tools/organize_hoover_ppm.py`
@@ -372,7 +448,14 @@ python tools/decompress_gz_dataset.py
 
 脚本内部假设的原始目录结构与 Adam Hoover 发布的数据一致，执行后会在指定根目录下生成 `images/` 和 `labels/`，便于后续统一构建分割任务的数据集。
 
-### 5.3 OD/Fovea 空域对齐 + 颜色归一化 Demo
+脚本内参数说明（无命令行参数，直接在代码里配置）：
+
+- `organize_hoover(base_dir)`  
+  - `base_dir`：Adam Hoover 原始数据根目录  
+
+脚本默认将 `base_dir` 指向 `tools/` 的上一级目录下的 `大作业二-血管标注`，如需更换位置可修改脚本末尾的 `hoover_root`。
+
+### 5.3 颜色归一化、空域对齐（任务 3）
 
 脚本：`align_and_normalize.py`（位于 `AU3605_FinalPro` 根目录）  
 
@@ -392,6 +475,14 @@ python tools/decompress_gz_dataset.py
 ```bash
 python align_and_normalize.py
 ```
+
+参数说明：
+
+- `--images-dir`：输入图像目录（默认 `None`；为 `None` 时使用 `alignment_demo_input/`）  
+- `--output-dir`：输出图像目录（默认 `None`；为 `None` 时使用 `alignment_demo_output/`）  
+- `--model-path`：OD/FCT 检测模型权重（默认 `logs/od_fct_model_best.pth`）  
+- `--device`：运行设备（`cpu` 或 `cuda`，默认 `cpu`；`cuda` 需要本机可用 CUDA）  
+- `--img-size`：对齐与归一化处理的目标边长（默认 `256`）
 
 效果：  
 - 自动加载 `logs/od_fct_model_best.pth` 作为检测模型；  
@@ -414,3 +505,4 @@ python align_and_normalize.py
 7. 整理 `dataset/Vessel` 目录结构，并在 `DIPfp` 目录运行：
    - `python train_vessel_seg.py --device cpu --epochs 40 --batch-size 2 --img-size 256 --lr 1e-4 --weight-decay 1e-4 --num-workers 0 --lr-scheduler step --step-size 20 --gamma 0.1`
    - `python test_vessel_seg.py --device cpu`
+   - `python vessel_inpaint.py --device cpu`
