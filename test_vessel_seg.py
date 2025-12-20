@@ -84,18 +84,31 @@ def test(model_path, device="cuda"):
             if i < 20:
                 img_np = images[0].cpu().permute(1, 2, 0).numpy()
                 img_np = (img_np * 255.0).clip(0, 255).astype(np.uint8)
-                pred_mask = preds[0, 0].cpu().numpy().astype(np.uint8) * 255
-                true_mask = masks[0, 0].cpu().numpy().astype(np.uint8) * 255
+                img_bgr = img_np
 
-                pred_color = cv2.applyColorMap(pred_mask, cv2.COLORMAP_JET)
-                true_color = cv2.applyColorMap(true_mask, cv2.COLORMAP_JET)
+                pred_mask = preds[0, 0].cpu().numpy().astype(np.uint8)
+                true_mask = masks[0, 0].cpu().numpy().astype(np.uint8)
 
-                img_bgr = cv2.cvtColor(img_np, cv2.COLOR_RGB2BGR)
+                overlay_true = img_bgr.copy()
+                overlay_true[true_mask > 0] = [0, 255, 0]
 
-                overlay_pred = cv2.addWeighted(img_bgr, 0.7, pred_color, 0.3, 0)
-                overlay_true = cv2.addWeighted(img_bgr, 0.7, true_color, 0.3, 0)
+                overlay_pred = img_bgr.copy()
+                overlay_pred[pred_mask > 0] = [0, 0, 255]
 
-                concat = np.concatenate([img_bgr, overlay_true, overlay_pred], axis=1)
+                font = cv2.FONT_HERSHEY_SIMPLEX
+                font_scale = 0.6
+                thickness = 1
+
+                img_with_title = img_bgr.copy()
+                cv2.putText(img_with_title, "Original", (10, 25), font, font_scale, (255, 255, 255), thickness, cv2.LINE_AA)
+
+                true_with_title = overlay_true.copy()
+                cv2.putText(true_with_title, "Ground Truth", (10, 25), font, font_scale, (255, 255, 255), thickness, cv2.LINE_AA)
+
+                pred_with_title = overlay_pred.copy()
+                cv2.putText(pred_with_title, "Prediction", (10, 25), font, font_scale, (255, 255, 255), thickness, cv2.LINE_AA)
+
+                concat = np.concatenate([img_with_title, true_with_title, pred_with_title], axis=1)
                 save_path = os.path.join(results_dir, f"vessel_result_{i:03d}.jpg")
                 cv2.imwrite(save_path, concat)
 
@@ -119,4 +132,3 @@ if __name__ == "__main__":
         print("Please train the vessel segmentation model first or provide the correct path.")
     else:
         test(args.model_path, args.device)
-

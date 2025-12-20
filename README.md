@@ -283,7 +283,9 @@ python test_od_fct.py --device cpu
   - 解码端：`ConvTranspose2d` 上采样 + skip connection + `DoubleConv`；
   - 输出层：`1×1` 卷积输出单通道血管概率图。
 
-损失函数采用 `BCEWithLogitsLoss`，训练和验证阶段同时计算 Dice 系数作为性能指标。
+损失函数采用 `BCEWithLogitsLoss`，训练和验证阶段同时计算 Dice 系数作为性能指标：  
+- `loss`（BCE）在训练时被最小化，用于优化逐像素的分类概率；  
+- `Dice` 作为评估指标，取值范围约为 `[0, 1]`，越接近 1 表示预测血管区域与真实标注的重叠越好。
 
 ### 4.2 训练脚本 `train_vessel_seg.py`
 
