@@ -139,6 +139,8 @@ Epoch 1/100, Train Loss: ..., Val Loss: ...
 
 如需在命令行中指定超参数，可以使用：
 
+Linux / macOS（bash/zsh）：
+
 ```bash
 python train_od_fct.py \
   --epochs 200 \
@@ -149,6 +151,12 @@ python train_od_fct.py \
   --lr-scheduler step \
   --step-size 40 \
   --gamma 0.1
+```
+
+Windows PowerShell（建议）：
+
+```powershell
+python train_od_fct.py --epochs 200 --batch-size 16 --lr 5e-5 --weight-decay 1e-4 --num-workers 2 --lr-scheduler step --step-size 40 --gamma 0.1
 ```
 
 常用参数说明：
