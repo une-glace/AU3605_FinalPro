@@ -53,7 +53,7 @@
 - `logs/`  
   存放训练过程中保存的模型权重（`od_fct_model_best.pth`, `od_fct_model_latest.pth`）。
 
-- `results/`  
+- `results_od_fct/`  
   运行测试脚本 `test_od_fct.py` 后生成的可视化结果（带有预测点和真实点的对比图）。
 
 - `utils/`  
@@ -244,7 +244,7 @@ python test_od_fct.py
 默认行为：
 - 加载 `logs/od_fct_model_best.pth`。
 - 在测试集上计算 OD 和 Fovea 的平均欧氏距离误差。
-- 将前 20 张测试图片的可视化结果保存到 `results/` 目录。
+- 将前 20 张测试图片的可视化结果保存到 `results_od_fct/` 目录。
   - **绿色点**：真实坐标 (Ground Truth)
   - **红色点**：预测坐标 (Prediction)
 
@@ -501,7 +501,7 @@ python align_and_normalize.py
    - 单机多卡：`CUDA_VISIBLE_DEVICES=0,1,2,3 python train_od_fct.py`  
 4. 如需在线监控训练曲线，安装 wandb 并设置 `WANDB_API_KEY` 后再次运行训练脚本。  
 5. 训练完成后，在 `logs/` 中获取最佳模型权重 `od_fct_model_best.pth`。
-6. 运行 `python test_od_fct.py` 评估模型性能并查看 `results/` 下的可视化效果。
+6. 运行 `python test_od_fct.py` 评估模型性能并查看 `results_od_fct/` 下的可视化效果。
 7. 整理 `dataset/Vessel` 目录结构，并在 `DIPfp` 目录运行：
    - `python train_vessel_seg.py --device cpu --epochs 40 --batch-size 2 --img-size 256 --lr 1e-4 --weight-decay 1e-4 --num-workers 0 --lr-scheduler step --step-size 20 --gamma 0.1`
    - `python test_vessel_seg.py --device cpu`

@@ -21,7 +21,7 @@ def test(model_path, device='cuda'):
     base_dir = os.path.dirname(os.path.abspath(__file__))
     test_images_dir = os.path.join(base_dir, "dataset", "OD_FCT", "test", "images")
     test_csv_path = os.path.join(base_dir, "dataset", "OD_FCT", "test", "targets.csv")
-    results_dir = os.path.join(base_dir, "results")
+    results_dir = os.path.join(base_dir, "results_od_fct")
     os.makedirs(results_dir, exist_ok=True)
 
     # Load Dataset
