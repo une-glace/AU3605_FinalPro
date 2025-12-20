@@ -297,7 +297,7 @@ python test_od_fct.py --device cpu
 
 ### 4.2 训练脚本 `train_vessel_seg.py`
 
-在 `DIPfp` 目录下运行血管分割训练脚本：
+在 `AU3605_FinalPro` 目录下运行血管分割训练脚本：
 
 ```bash
 python train_vessel_seg.py --device cpu --epochs 40 --batch-size 2 --img-size 256 --lr 1e-4 --weight-decay 1e-4 --num-workers 0 --lr-scheduler step --step-size 20 --gamma 0.1
@@ -435,7 +435,7 @@ python tools/decompress_gz_dataset.py
   - `root_dir`：要递归查找并解压 `.gz` 的根目录  
   - `overwrite`：若目标文件已存在，是否覆盖（默认 `False`，不覆盖并跳过）
 
-脚本默认会将 `root_dir` 设为 `tools/` 的上一级目录（即整个 `DIPfp`），如需只处理某个数据目录，可在脚本末尾修改 `target_dir`。
+脚本默认会将 `root_dir` 设为 `tools/` 的上一级目录（即整个 `AU3605_FinalPro`），如需只处理某个数据目录，可在脚本末尾修改 `target_dir`。
 
 ### 5.2 整理 Adam Hoover PPM 图像和标注
 
@@ -502,7 +502,7 @@ python align_and_normalize.py
 4. 如需在线监控训练曲线，安装 wandb 并设置 `WANDB_API_KEY` 后再次运行训练脚本。  
 5. 训练完成后，在 `logs/` 中获取最佳模型权重 `od_fct_model_best.pth`。
 6. 运行 `python test_od_fct.py` 评估模型性能并查看 `results_od_fct/` 下的可视化效果。
-7. 整理 `dataset/Vessel` 目录结构，并在 `DIPfp` 目录运行：
+7. 整理 `dataset/Vessel` 目录结构，并在 `AU3605_FinalPro` 目录运行：
    - `python train_vessel_seg.py --device cpu --epochs 40 --batch-size 2 --img-size 256 --lr 1e-4 --weight-decay 1e-4 --num-workers 0 --lr-scheduler step --step-size 20 --gamma 0.1`
    - `python test_vessel_seg.py --device cpu`
    - `python vessel_inpaint.py --device cpu`
