@@ -1,83 +1,100 @@
 import os
 import cv2
 import torch
+import numpy as np
 from torch.utils.data import Dataset
-from utils import color_normalization
-
-
-def match_mask(img_name, mask_dir):
-    base = os.path.splitext(img_name)[0]
-
-    # Adam Hoover: im0001.ppm -> im0001.ah.ppm
-    if base.startswith("im") and base[2:].isdigit():
-        candidate = f"{base}.ah.ppm"
-        p = os.path.join(mask_dir, candidate)
-        if os.path.exists(p):
-            return p
-
-    # DRIVE: 01_test -> 01_manual1.gif
-    if base.endswith("_test"):
-        base_drive = base.replace("_test", "")
-        candidate = f"{base_drive}_manual1.gif"
-        p = os.path.join(mask_dir, candidate)
-        if os.path.exists(p):
-            return p
-
-    # maybe plain base.gif
-    candidate = base + ".gif"
-    p = os.path.join(mask_dir, candidate)
-    if os.path.exists(p):
-        return p
-
-    # fallback fuzzy search
-    for f in os.listdir(mask_dir):
-        if base.split("_")[0] in f:
-            return os.path.join(mask_dir, f)
-
-    return None
+from PIL import Image
 
 
 class VesselSegDataset(Dataset):
-    def __init__(self, images_dir, masks_dir, img_size=(256, 256)):
-        print(f" ** Loading dataset from {images_dir}...")
-        self.imgs = []
-        self.masks = []
+    def __init__(self, root_dir, split="train", img_size=(256, 256), sources=None):
+        self.root_dir = root_dir
+        self.split = split
+        self.img_size = img_size
+        if sources is None:
+            sources = ["DRIVE", "HRF", "AdamHoover"]
+        self.sources = sources
+        self.samples = []
+        if split == "train":
+            self._load_train_samples()
+        else:
+            self._load_test_samples()
 
-        files = sorted(os.listdir(images_dir))
-        for img_name in files:
-            img_path = os.path.join(images_dir, img_name)
+    def _load_train_samples(self):
+        base = os.path.join(self.root_dir, "training")
+        if "DRIVE" in self.sources:
+            drive_root = os.path.join(base, "DRIVE")
+            images_dir = os.path.join(drive_root, "images")
+            targets_dir = os.path.join(drive_root, "targets")
+            if os.path.isdir(images_dir) and os.path.isdir(targets_dir):
+                for name in os.listdir(targets_dir):
+                    if not name.endswith("_manual1.gif"):
+                        continue
+                    stem = name.split("_")[0]
+                    img_name = stem + "_training.tif"
+                    img_path = os.path.join(images_dir, img_name)
+                    mask_path = os.path.join(targets_dir, name)
+                    if os.path.exists(img_path) and os.path.exists(mask_path):
+                        self.samples.append((img_path, mask_path))
+        if "AdamHoover" in self.sources:
+            hoover_root = os.path.join(base, "AdamHoover")
+            images_dir = os.path.join(hoover_root, "images")
+            targets_dir = os.path.join(hoover_root, "targets")
+            if os.path.isdir(images_dir) and os.path.isdir(targets_dir):
+                for name in os.listdir(images_dir):
+                    if not name.endswith(".ppm"):
+                        continue
+                    stem, _ = os.path.splitext(name)
+                    mask_name = stem + ".ah.ppm"
+                    img_path = os.path.join(images_dir, name)
+                    mask_path = os.path.join(targets_dir, mask_name)
+                    if os.path.exists(mask_path):
+                        self.samples.append((img_path, mask_path))
+        if "HRF" in self.sources:
+            hrf_root = os.path.join(base, "HRF")
+            images_dir = os.path.join(hrf_root, "images")
+            targets_dir = os.path.join(hrf_root, "targets")
+            if os.path.isdir(images_dir) and os.path.isdir(targets_dir):
+                for name in os.listdir(targets_dir):
+                    if not name.endswith("_dr.tif"):
+                        continue
+                    img_name = name.replace(".tif", ".JPG")
+                    img_path = os.path.join(images_dir, img_name)
+                    mask_path = os.path.join(targets_dir, name)
+                    if os.path.exists(img_path) and os.path.exists(mask_path):
+                        self.samples.append((img_path, mask_path))
 
-            if not os.path.isfile(img_path):
-                continue
-
-            mask_path = match_mask(img_name, masks_dir)
-            if mask_path is None:
-                print(f"!! Warning: No mask found for {img_name}, skip.")
-                continue
-
-            img = cv2.imread(img_path, cv2.IMREAD_COLOR)
-            mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
-
-            if img is None or mask is None:
-                print(f"!! Warning: load failed {img_path} / {mask_path}")
-                continue
-
-            img = cv2.resize(img, img_size)
-            mask = cv2.resize(mask, img_size, interpolation=cv2.INTER_NEAREST)
-
-            img = color_normalization(img)
-            img = torch.tensor(img, dtype=torch.float32).permute(2, 0, 1)
-
-            mask = torch.tensor(mask, dtype=torch.float32)
-            mask = (mask > 127).float().unsqueeze(0)
-
-            self.imgs.append(img)
-            self.masks.append(mask)
-
-        print(f" Loaded {len(self.imgs)} images.")
+    def _load_test_samples(self):
+        base = os.path.join(self.root_dir, "test")
+        images_dir = os.path.join(base, "images")
+        targets_dir = os.path.join(base, "targets")
+        if os.path.isdir(images_dir) and os.path.isdir(targets_dir):
+            for name in os.listdir(targets_dir):
+                if not name.endswith("_manual1.gif"):
+                    continue
+                stem = name.split("_")[0]
+                img_name = stem + "_test.tif"
+                img_path = os.path.join(images_dir, img_name)
+                mask_path = os.path.join(targets_dir, name)
+                if os.path.exists(img_path) and os.path.exists(mask_path):
+                    self.samples.append((img_path, mask_path))
 
     def __len__(self):
-        return len(self.imgs)
+        return len(self.samples)
 
     def __getitem__(self, idx):
-        return self.imgs[idx], self.masks[idx]
+        img_path, mask_path = self.samples[idx]
+        img = cv2.imread(img_path, cv2.IMREAD_COLOR)
+        mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
+        if mask is None:
+            pil_mask = Image.open(mask_path).convert("L")
+            mask = np.array(pil_mask)
+        if img is None or mask is None:
+            raise RuntimeError(f"Failed to load {img_path} or {mask_path}")
+        img = cv2.resize(img, self.img_size, interpolation=cv2.INTER_LINEAR)
+        mask = cv2.resize(mask, self.img_size, interpolation=cv2.INTER_NEAREST)
+        img = img.astype(np.float32) / 255.0
+        mask = (mask > 0).astype(np.float32)
+        img = torch.from_numpy(img).permute(2, 0, 1)
+        mask = torch.from_numpy(mask).unsqueeze(0)
+        return img, mask

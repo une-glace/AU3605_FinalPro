@@ -259,20 +259,87 @@ python test_od_fct.py --device cpu
 
 ---
 
-## 4. 第二个模型：血管分割（预留说明）
+## 4. 第二个模型：血管分割
 
-第二个模型（血管分割）尚未实现完整训练脚本，已预留如下结构，便于未来扩展：
+第二个模型实现了典型的 U-Net 结构，用于眼底血管分割任务，训练与评估脚本均已就绪。
 
-- 数据建议结构：`dataset/vessel_seg/`
-  - `normal/`：来自 `Normal Retinal Images/` 或其他正常眼底照片及其血管标注。  
-  - `adam_hoover/`：Adam Hoover 数据（通过 `tools/organize_hoover_ppm.py` 整理得到的 `images/` 与 `labels/`）。  
-  - `other/`：其他来源的数据（例如 DRIVE/HRF 等）。
+数据集目录约定为 `dataset/Vessel/`，内部结构如下：
 
-推荐后续在此基础上添加：
+- `dataset/Vessel/training/`
+  - `DRIVE/images/*.tif` 与 `DRIVE/targets/*_manual1.gif`
+  - `AdamHoover/images/*.ppm` 与 `AdamHoover/targets/*.ah.ppm`
+  - `HRF/images/*_dr.JPG` 与 `HRF/targets/*_dr.tif`
+- `dataset/Vessel/test/`
+  - `images/*_test.tif`
+  - `targets/*_manual1.gif`
 
-- `data_modules/vessel_seg_dataset.py`：血管分割任务的 Dataset（图像 + mask）。  
-- `models/vessel_seg_net.py`：如 U-Net 等分割网络结构。  
-- `train_vessel_seg.py`：与 `train_od_fct.py` 类似的训练入口，带 wandb 与多卡支持。
+`data_modules/vessel_seg_dataset.py` 会自动将 `training` 下的三个子目录当作一个统一的大训练集来处理，无需手动区分来源数据。
+
+### 4.1 模型结构
+
+- 模型文件：`models/vessel_seg_net.py`  
+- 网络结构：`VesselSegNet`，为 3 层下采样的 U-Net：
+  - 编码端：`DoubleConv` + `MaxPool2d` 堆叠；
+  - 解码端：`ConvTranspose2d` 上采样 + skip connection + `DoubleConv`；
+  - 输出层：`1×1` 卷积输出单通道血管概率图。
+
+损失函数采用 `BCEWithLogitsLoss`，训练和验证阶段同时计算 Dice 系数作为性能指标：  
+- `loss`（BCE）在训练时被最小化，用于优化逐像素的分类概率；  
+- `Dice` 作为评估指标，取值范围约为 `[0, 1]`，越接近 1 表示预测血管区域与真实标注的重叠越好。
+
+### 4.2 训练脚本 `train_vessel_seg.py`
+
+在 `DIPfp` 目录下运行血管分割训练脚本：
+
+```bash
+python train_vessel_seg.py --device cpu --epochs 40 --batch-size 2 --img-size 256 --lr 1e-4 --weight-decay 1e-4 --num-workers 0 --lr-scheduler step --step-size 20 --gamma 0.1
+```
+
+上述是一套适合在普通 Windows CPU 上训练的推荐参数：
+
+- 使用 CPU 进行训练（`--device cpu`）；  
+- 训练 40 个 epoch；  
+- batch size 设为 2，兼顾速度与内存占用；  
+- 输入统一缩放到 `256×256`；  
+- 初始学习率 `1e-4`，权重衰减 `1e-4`；  
+- 使用 `StepLR` 学习率调度器，在第 20 个 epoch 将学习率衰减为原来的 `0.1`。
+
+如需快速小测试，可适当减小 `--epochs`（例如 5 或 10）来验证流程。
+
+训练过程中会自动：
+
+- 读取 `dataset/Vessel/training` 作为训练集；  
+- 读取 `dataset/Vessel/test` 作为验证集；  
+- 在每个 epoch 结束后，保存：
+  - 最新模型到 `logs/vessel_seg_model_latest.pth`；  
+  - 验证集损失最优的模型到 `logs/vessel_seg_model_best.pth`。
+
+如果环境中安装并登录了 `wandb`，脚本会自动将训练曲线同步到 `retina_vessel_seg` 项目；若未配置，脚本会自动忽略 wandb，仅在本地打印日志。
+
+### 4.3 测试脚本 `test_vessel_seg.py`
+
+训练完成后，可以使用 `test_vessel_seg.py` 对血管分割模型在测试集上的性能进行评估，并生成可视化结果。
+
+基本用法：
+
+```bash
+python test_vessel_seg.py --device cpu
+```
+
+默认行为：
+
+- 加载 `logs/vessel_seg_model_best.pth`；  
+- 在 `dataset/Vessel/test` 上计算平均 Dice 系数；  
+- 将前 20 张测试样本的可视化结果保存到 `results_vessel_seg/` 目录：
+  - 左：原始眼底图像；  
+  - 中：原图叠加真实血管标注；  
+  - 右：原图叠加模型预测血管图。
+
+同样可以通过参数指定模型路径或设备，例如：
+
+```bash
+python test_vessel_seg.py --model_path logs/vessel_seg_model_latest.pth --device cpu
+```
 
 ---
 
@@ -344,5 +411,6 @@ python align_and_normalize.py
 4. 如需在线监控训练曲线，安装 wandb 并设置 `WANDB_API_KEY` 后再次运行训练脚本。  
 5. 训练完成后，在 `logs/` 中获取最佳模型权重 `od_fct_model_best.pth`。
 6. 运行 `python test_od_fct.py` 评估模型性能并查看 `results/` 下的可视化效果。
-
-第二个模型（血管分割）在整理好 `dataset/vessel_seg` 结构后，可以按照第一模型的模式增添相应的 Dataset、模型和训练脚本。
+7. 整理 `dataset/Vessel` 目录结构，并在 `DIPfp` 目录运行：
+   - `python train_vessel_seg.py --device cpu --epochs 40 --batch-size 2 --img-size 256 --lr 1e-4 --weight-decay 1e-4 --num-workers 0 --lr-scheduler step --step-size 20 --gamma 0.1`
+   - `python test_vessel_seg.py --device cpu`
