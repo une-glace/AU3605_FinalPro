@@ -3,6 +3,7 @@ import cv2
 import torch
 import numpy as np
 from torch.utils.data import Dataset
+from PIL import Image
 
 
 class VesselSegDataset(Dataset):
@@ -85,6 +86,9 @@ class VesselSegDataset(Dataset):
         img_path, mask_path = self.samples[idx]
         img = cv2.imread(img_path, cv2.IMREAD_COLOR)
         mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
+        if mask is None:
+            pil_mask = Image.open(mask_path).convert("L")
+            mask = np.array(pil_mask)
         if img is None or mask is None:
             raise RuntimeError(f"Failed to load {img_path} or {mask_path}")
         img = cv2.resize(img, self.img_size, interpolation=cv2.INTER_LINEAR)
@@ -94,4 +98,3 @@ class VesselSegDataset(Dataset):
         img = torch.from_numpy(img).permute(2, 0, 1)
         mask = torch.from_numpy(mask).unsqueeze(0)
         return img, mask
-
