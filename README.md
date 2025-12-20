@@ -278,7 +278,7 @@ python test_od_fct.py --device cpu
 
 ## 5. 数据处理工具脚本
 
-工具脚本统一放在 `tools/` 目录下，均可在命令行直接调用。
+工具脚本统一放在 `tools/` 目录下，均可在命令行直接调用。  
 
 ### 5.1 批量解压 `.gz` 文件
 
@@ -304,6 +304,32 @@ python tools/decompress_gz_dataset.py
   - 对应手工标注的 PPM 图像整理到 `labels/` 目录。  
 
 脚本内部假设的原始目录结构与 Adam Hoover 发布的数据一致，执行后会在指定根目录下生成 `images/` 和 `labels/`，便于后续统一构建分割任务的数据集。
+
+### 5.3 OD/Fovea 空域对齐 + 颜色归一化 Demo
+
+脚本：`align_and_normalize.py`（位于 `AU3605_FinalPro` 根目录）  
+
+用途：  
+- 使用已训练好的 OD/Fovea 检测模型，对单张或多张图像做：  
+  - 视盘/黄斑方向的一致化（必要时自动左右翻转）；  
+  - 视盘–黄斑中点的空域对齐；  
+  - 颜色归一化到参考图 `utils/ref_img.jpg`。  
+- 并通过 `matplotlib` 给出“参考图 – 原始图 – 处理后图像”的三图对比。
+
+默认目录约定（由脚本自动创建）：  
+- `alignment_demo_input/`：放入待处理的原始眼底图像；  
+- `alignment_demo_output/`：脚本运行后，处理好的图像会保存到这里，文件名与原图一致。
+
+基本用法（在 `AU3605_FinalPro` 目录下）：
+
+```bash
+python align_and_normalize.py
+```
+
+效果：  
+- 自动加载 `logs/od_fct_model_best.pth` 作为检测模型；  
+- 对 `alignment_demo_input/` 中的所有支持格式图像（`.jpg/.png/...`）进行处理；  
+- 结果图像写入 `alignment_demo_output/`，并弹出一个三图对比窗口便于观察预处理效果。
 
 ---
 
