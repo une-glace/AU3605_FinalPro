@@ -137,6 +137,31 @@ Epoch 1/100, Train Loss: ..., Val Loss: ...
 - 最新模型：`logs/od_fct_model_latest.pth`  
 - 最优模型：`logs/od_fct_model_best.pth`
 
+如需在命令行中指定超参数，可以使用：
+
+```bash
+python train_od_fct.py \
+  --epochs 200 \
+  --batch-size 16 \
+  --lr 5e-5 \
+  --weight-decay 1e-4 \
+  --num-workers 2 \
+  --lr-scheduler step \
+  --step-size 40 \
+  --gamma 0.1
+```
+
+常用参数说明：
+
+- `--epochs`：训练轮数  
+- `--batch-size`：批大小  
+- `--lr`：学习率  
+- `--weight-decay`：L2 正则化强度  
+- `--num-workers`：DataLoader 使用的进程数  
+- `--lr-scheduler`：学习率调度方式（`none` 或 `step`）  
+- `--step-size`：StepLR 的步长（多少个 epoch 衰减一次）  
+- `--gamma`：每次衰减的比例  
+
 ### 3.3 使用单张指定 GPU 训练
 
 在 Linux 或服务器上（bash/zsh）：
