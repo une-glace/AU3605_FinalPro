@@ -1,12 +1,13 @@
 # AU3605_FinalPro 视网膜图像处理项目
 
-本项目主要覆盖以下 5 个任务（对应课程大作业的核心流程）：
+本项目主要覆盖以下 6 个任务（对应课程大作业的核心流程）：
 
 1. 视盘中心检测（OD Center）
 2. 黄斑中心检测（Fovea Center）
 3. 颜色归一化、空域对齐（相对容易）
 4. 血管分割（Vessel Segmentation）
 5. 血管区域光滑填充（去血管 + Inpainting）
+6. 基于PCA及正常样本集合分析的眼底图像中各类异常检测
 
 下文按上述任务给出目录结构与脚本用法，默认在 `AU3605_FinalPro` 目录下运行命令。
 
@@ -21,6 +22,9 @@
 
 - `test_od_fct.py`  
   OD/FCT 模型的测试脚本，加载训练好的模型并在测试集上进行评估和可视化。
+
+- `anomaly_detection_pca.py`  
+  基于 PCA 分析的异常检测脚本，加载正常样本集合，对测试集图像进行异常检测。
 
 - `models/`  
   - `od_fct_net.py`  
@@ -70,6 +74,8 @@
 - `Normal Retinal Images/`  
   原始的正常视网膜图像（tif），可作为第二个模型或其他任务的数据来源。
 
+- `results_anomaly_pca/`  
+  运行 `anomaly_detection_pca.py` 后生成的异常检测结果（包含对齐输入、重构图、ROI Mask、差异热力图和最终异常检测结果）。
 ---
 
 ## 2. 环境与依赖
@@ -82,6 +88,7 @@ conda activate dip
 pip install torch torchvision torchaudio  # 按服务器 CUDA 版本选择对应 wheel
 pip install opencv-python pandas numpy tqdm
 pip install wandb  # 如需在线可视化
+pip install scikit-learn  # 如需基于 PCA 的异常检测
 ```
 
 如果不安装 `wandb`，训练脚本会自动跳过 wandb 相关部分，不会报错。
@@ -506,3 +513,8 @@ python align_and_normalize.py
    - `python train_vessel_seg.py --device cpu --epochs 40 --batch-size 2 --img-size 256 --lr 1e-4 --weight-decay 1e-4 --num-workers 0 --lr-scheduler step --step-size 20 --gamma 0.1`
    - `python test_vessel_seg.py --device cpu`
    - `python vessel_inpaint.py --device cpu`
+8. 如需进行基于 PCA 的异常检测（OD/FCT 对齐后，利用正常样本训练 PCA，再通过重构误差检测异常）：
+   - 脚本：`anomaly_detection_pca.py`
+   - 依赖：除了上述环境外，还需要安装 scikit-learn (`pip install scikit-learn`)
+   - 运行：`python anomaly_detection_pca.py`
+   - 输出：结果保存到 `results_anomaly_pca/` 目录，包含每张图的对齐输入、重构图、ROI Mask、差异热力图和最终异常检测结果。
