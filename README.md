@@ -15,67 +15,58 @@
 
 ## 1. 目录结构
 
-根目录：`AU3605_FinalPro`
+根目录：`AU3605_FinalPro`  
 
-- `train_od_fct.py`  
-  OD/FCT 检测模型的训练入口脚本（支持 wandb、单卡、多卡 `DataParallel`、进度条显示）。
+- `dataset/`：数据根目录  
+  - `OD_FCT/`：OD/FCT 坐标回归数据（IDRiD）  
+    - `train/images/`、`train/targets.csv`：训练集与标签  
+    - `test/images/`、`test/targets.csv`：测试/验证集与标签  
+  - `Vessel/`：血管分割数据（已按来源整理）  
+    - `training/DRIVE|AdamHoover|HRF/`：训练集（各自包含 `images/` 与 `targets/`）  
+    - `test/images/`、`test/targets/`：测试集（DRIVE 风格文件名）
 
-- `test_od_fct.py`  
-  OD/FCT 模型的测试脚本，加载训练好的模型并在测试集上进行评估和可视化。
+- `models/`：模型结构定义  
+  - `od_fct_net.py`：OD/FCT 回归网络 `DiskMaculaNet`（输出 `[OD_x, OD_y, Fovea_x, Fovea_y]`）  
+  - `vessel_seg_net.py`：血管分割网络 `VesselSegNet`（U-Net）  
+  - `__init__.py`：便于从 `models` 导入模型类
 
-- `anomaly_detection_pca.py`  
-  基于 PCA 分析的异常检测脚本，加载正常样本集合，对测试集图像进行异常检测。
+- `data_modules/`：数据集读取与预处理  
+  - `od_fct_dataset.py`：OD/FCT 数据集 `OD_FCT_Dataset`（补边、缩放、颜色归一化、坐标映射到 `256×256`）  
+  - `vessel_seg_dataset.py`：血管分割数据集 `VesselSegDataset`（融合 `training/` 下多来源数据）
 
-- `models/`  
-  - `od_fct_net.py`  
-    OD/FCT 检测网络结构 `DiskMaculaNet`，输入 `3×256×256`，输出 4 个坐标：  
-    `[OD_x, OD_y, Fovea_x, Fovea_y]`。
-  - `__init__.py`  
-    方便从 `models` 导入模型类。
+- `logs/`：训练保存的模型权重  
+  - `od_fct_model_best.pth` / `od_fct_model_latest.pth`  
+  - `vessel_seg_model_best.pth` / `vessel_seg_model_latest.pth`
 
-- `data_modules/`  
-  - `od_fct_dataset.py`  
-    OD/FCT 任务的数据集类 `OD_FCT_Dataset`：  
-    - 读取 `dataset/OD_FCT/train` 与 `dataset/OD_FCT/test` 中的 IDRiD 图像和对应 CSV。  
-    - 将图像补成正方形并缩放至 `256×256`。  
-    - 使用 `utils.color_normalization` 做颜色归一化。  
-    - 将原始坐标缩放映射到 `256×256` 坐标系。  
-  - `__init__.py`
+- `results_od_fct/`：OD/FCT 测试可视化输出（`test_od_fct.py` 生成）  
+- `results_vessel_seg/`：血管分割测试可视化输出（`test_vessel_seg.py` 生成）  
+- `results_vessel_inpaint/`：去血管三联图输出（`vessel_inpaint.py` 生成）  
+- `results_anomaly_pca/`：PCA 异常检测结果输出（`anomaly_detection_pca.py` 生成）
 
-- `dataset/`  
-  - `OD_FCT/`  
-    第一个模型使用的 IDRiD 数据集（已整理好）：  
-    - `train/images/IDRiD_XXX.jpg`：训练图像。  
-    - `train/targets.csv`：训练标签（CSV 中列为 `ID, OD_X, OD_Y, Fovea_X, Fovea_Y`）。  
-    - `test/images/IDRiD_XXX.jpg`：测试/验证图像。  
-    - `test/targets.csv`：测试/验证标签。
-  - `Vessel/`  
-    第二个模型（血管分割）使用的数据根目录（已整理）：  
-    - `training/`：训练集（按数据来源分子目录）。  
-    - `test/`：测试/验证集（统一放在 `images/` 与 `targets/` 下）。
+- `alignment_demo_input/`：空域对齐 + 颜色归一化 Demo 的输入目录（`align_and_normalize.py` 默认读取）  
+- `alignment_demo_output/`：空域对齐 + 颜色归一化 Demo 的输出目录（`align_and_normalize.py` 默认写入）
 
-- `logs/`  
-  存放训练过程中保存的模型权重（`od_fct_model_best.pth`, `od_fct_model_latest.pth`）。
+- `utils/`：可复用工具与资源  
+  - `__init__.py`：提供 `color_normalization` 等可复用函数  
+  - `ref_img.jpg`：颜色归一化参考图
 
-- `results_od_fct/`  
-  运行测试脚本 `test_od_fct.py` 后生成的可视化结果（带有预测点和真实点的对比图）。
+- `tools/`：数据整理/预处理小工具脚本（一次性运行型）  
+  - `decompress_gz_dataset.py`：递归解压 `.gz`（用于血管标注数据等）  
+  - `organize_hoover_ppm.py`：整理 Adam Hoover 的 PPM 图像与标注到标准目录结构
 
-- `utils/`  
-  - `__init__.py`：提供 `color_normalization` 函数，利用 `ref_img.jpg` 做颜色风格归一化。  
-  - `ref_img.jpg`：颜色归一化参考图像。
+- `Normal Retinal Images/`：原始正常视网膜图像（tif），可作为正常样本集合或其他任务（如PCA）数据来源  
+- `wandb/`：wandb 本地运行记录（若启用 wandb，会自动生成）  
 
-- `tools/`  
-  一些数据整理类工具脚本，均带有中文注释说明用途：  
-  - `decompress_gz_dataset.py`  
-    从指定根目录递归查找 `.gz` 文件并解压（适合 Adam Hoover 血管标注文件等）。  
-  - `organize_hoover_ppm.py`  
-    将 Adam Hoover 提供的 PPM 原图和血管标注整理到 `images/` 与 `labels/` 目录。
+- `train_od_fct.py`：OD/FCT 模型训练入口  
+- `test_od_fct.py`：OD/FCT 模型测试与可视化入口（输出到 `results_od_fct/`）  
+- `train_vessel_seg.py`：血管分割模型训练入口  
+- `test_vessel_seg.py`：血管分割模型测试与可视化入口（输出到 `results_vessel_seg/`）  
+- `vessel_inpaint.py`：血管区域光滑填充（去血管 + inpainting，输出到 `results_vessel_inpaint/`）  
+- `align_and_normalize.py`：颜色归一化 + 空域对齐 Demo（读写 `alignment_demo_input/` 与 `alignment_demo_output/`）  
+- `anomaly_detection_pca.py`：基于 PCA 的异常检测脚本（输出到 `results_anomaly_pca/`）  
 
-- `Normal Retinal Images/`  
-  原始的正常视网膜图像（tif），可作为第二个模型或其他任务的数据来源。
-
-- `results_anomaly_pca/`  
-  运行 `anomaly_detection_pca.py` 后生成的异常检测结果（包含对齐输入、重构图、ROI Mask、差异热力图和最终异常检测结果）。
+- `.gitignore`：Git 忽略规则  
+- `课程大作业2.pdf`：课程文档/题目说明
 ---
 
 ## 2. 环境与依赖
