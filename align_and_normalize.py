@@ -62,21 +62,35 @@ def predict_coords(model, img_256, device):
 
 
 def compute_similarity_transform(od_x, od_y, fovea_x, fovea_y, target_od, target_f):
-    center = np.array(
-        [(od_x + fovea_x) / 2.0, (od_y + fovea_y) / 2.0],
-        dtype=np.float32,
-    )
-    target_center = np.array(
-        [(target_od[0] + target_f[0]) / 2.0, (target_od[1] + target_f[1]) / 2.0],
-        dtype=np.float32,
-    )
+    src_od = np.array([od_x, od_y], dtype=np.float32)
+    src_f = np.array([fovea_x, fovea_y], dtype=np.float32)
+    tgt_od = np.array([target_od[0], target_od[1]], dtype=np.float32)
+    tgt_f = np.array([target_f[0], target_f[1]], dtype=np.float32)
 
-    shift = target_center - center
+    src_vec = src_f - src_od
+    tgt_vec = tgt_f - tgt_od
 
-    m = np.array(
-        [[1.0, 0.0, float(shift[0])], [0.0, 1.0, float(shift[1])]],
-        dtype=np.float32,
-    )
+    src_len = float(np.linalg.norm(src_vec))
+    tgt_len = float(np.linalg.norm(tgt_vec))
+    if src_len < 1e-6 or tgt_len < 1e-6:
+        return None
+
+    scale = tgt_len / src_len
+
+    angle_src = float(np.arctan2(src_vec[1], src_vec[0]))
+    angle_tgt = float(np.arctan2(tgt_vec[1], tgt_vec[0]))
+    angle = angle_tgt - angle_src
+
+    cos_a = float(np.cos(angle))
+    sin_a = float(np.sin(angle))
+    r = np.array([[cos_a, -sin_a], [sin_a, cos_a]], dtype=np.float32)
+    rs = scale * r
+
+    t = tgt_od - np.dot(rs, src_od)
+
+    m = np.zeros((2, 3), dtype=np.float32)
+    m[:, :2] = rs
+    m[:, 2] = t
     return m
 
 
@@ -94,6 +108,11 @@ def process(args):
     output_dir = args.output_dir
     if images_dir is None or output_dir is None:
         images_dir, output_dir = ensure_demo_dirs(base_dir)
+    else:
+        if not os.path.isabs(images_dir):
+            images_dir = os.path.join(base_dir, images_dir)
+        if not os.path.isabs(output_dir):
+            output_dir = os.path.join(base_dir, output_dir)
 
     device = torch.device("cpu")
     if args.device == "cuda" and torch.cuda.is_available():
@@ -143,13 +162,31 @@ def process(args):
         if m is None:
             continue
 
+        src_od_h = np.array([od_x, od_y, 1.0], dtype=np.float32)
+        src_fv_h = np.array([fovea_x, fovea_y, 1.0], dtype=np.float32)
+        aligned_od = np.dot(m, src_od_h)
+        aligned_fv = np.dot(m, src_fv_h)
+        print(
+            f"{name}: "
+            f"OD src=({od_x:.2f}, {od_y:.2f}), "
+            f"Fovea src=({fovea_x:.2f}, {fovea_y:.2f}), "
+            f"OD aligned=({aligned_od[0]:.2f}, {aligned_od[1]:.2f}), "
+            f"Fovea aligned=({aligned_fv[0]:.2f}, {aligned_fv[1]:.2f}), "
+            f"OD target=({target_od[0]:.2f}, {target_od[1]:.2f}), "
+            f"Fovea target=({target_f[0]:.2f}, {target_f[1]:.2f})"
+        )
+
+        m_h = np.eye(3, dtype=np.float32)
+        m_h[:2, :3] = m
+        m_inv = np.linalg.inv(m_h)
+        m_warp = m_inv[:2, :]
+
         aligned = cv2.warpAffine(
             img_for_align,
-            m,
+            m_warp,
             (args.img_size, args.img_size),
             flags=cv2.INTER_LINEAR,
-            borderMode=cv2.BORDER_CONSTANT,
-            borderValue=(0, 0, 0),
+            borderMode=cv2.BORDER_REPLICATE,
         )
 
         out_path = os.path.join(output_dir, name)
@@ -207,8 +244,8 @@ def process(args):
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--images-dir", type=str, default=None)
-    parser.add_argument("--output-dir", type=str, default=None)
+    parser.add_argument("--images-dir", type=str, default="alignment_demo_input")
+    parser.add_argument("--output-dir", type=str, default="alignment_demo_output")
     parser.add_argument("--model-path", type=str, default="logs/od_fct_model_best.pth")
     parser.add_argument("--device", type=str, default="cpu", choices=["cpu", "cuda"])
     parser.add_argument("--img-size", type=int, default=256)
