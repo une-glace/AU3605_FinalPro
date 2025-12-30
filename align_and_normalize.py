@@ -135,9 +135,34 @@ def process(args):
 
     os.makedirs(output_dir, exist_ok=True)
 
+    ref_vis = cv2.resize(ref_256, (args.img_size, args.img_size))
+    ref_vis = cv2.cvtColor(ref_vis, cv2.COLOR_BGR2RGB)
+    h, w, _ = ref_vis.shape
+    corner = max(1, h // 16)
+    corners = np.concatenate(
+        [
+            ref_vis[:corner, :corner].reshape(-1, 3),
+            ref_vis[:corner, -corner:].reshape(-1, 3),
+            ref_vis[-corner:, :corner].reshape(-1, 3),
+            ref_vis[-corner:, -corner:].reshape(-1, 3),
+        ],
+        axis=0,
+    )
+    bg_color = corners.mean(axis=0).astype(ref_vis.dtype)
+
+    def unify_background(img):
+        mask = (
+            (img[:, :, 0] == 0)
+            & (img[:, :, 1] == 0)
+            & (img[:, :, 2] == 0)
+        )
+        out = img.copy()
+        out[mask] = bg_color
+        return out
+
+    ref_vis = unify_background(ref_vis)
+
     exts = {".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff"}
-    selected_original = None
-    selected_aligned = None
 
     for name in sorted(os.listdir(images_dir)):
         base, ext = os.path.splitext(name)
@@ -192,40 +217,9 @@ def process(args):
         out_path = os.path.join(output_dir, name)
         cv2.imwrite(out_path, aligned)
 
-        if selected_original is None:
-            selected_original = img_256
-            selected_aligned = aligned
+        orig_vis = cv2.cvtColor(img_256, cv2.COLOR_BGR2RGB)
+        aligned_vis = cv2.cvtColor(aligned, cv2.COLOR_BGR2RGB)
 
-    if selected_original is not None:
-        ref_vis = cv2.resize(ref_256, (args.img_size, args.img_size))
-        ref_vis = cv2.cvtColor(ref_vis, cv2.COLOR_BGR2RGB)
-        orig_vis = cv2.cvtColor(selected_original, cv2.COLOR_BGR2RGB)
-        aligned_vis = cv2.cvtColor(selected_aligned, cv2.COLOR_BGR2RGB)
-
-        h, w, _ = ref_vis.shape
-        corner = max(1, h // 16)
-        corners = np.concatenate(
-            [
-                ref_vis[:corner, :corner].reshape(-1, 3),
-                ref_vis[:corner, -corner:].reshape(-1, 3),
-                ref_vis[-corner:, :corner].reshape(-1, 3),
-                ref_vis[-corner:, -corner:].reshape(-1, 3),
-            ],
-            axis=0,
-        )
-        bg_color = corners.mean(axis=0).astype(ref_vis.dtype)
-
-        def unify_background(img):
-            mask = (
-                (img[:, :, 0] == 0)
-                & (img[:, :, 1] == 0)
-                & (img[:, :, 2] == 0)
-            )
-            out = img.copy()
-            out[mask] = bg_color
-            return out
-
-        ref_vis = unify_background(ref_vis)
         orig_vis = unify_background(orig_vis)
         aligned_vis = unify_background(aligned_vis)
 
@@ -239,7 +233,11 @@ def process(args):
         axes[2].imshow(aligned_vis)
         axes[2].set_title("Aligned")
         axes[2].axis("off")
-        plt.show()
+        triptych_base, _ = os.path.splitext(name)
+        triptych_filename = f"alignment_demo_triptych_{triptych_base}.png"
+        triptych_path = os.path.join(output_dir, triptych_filename)
+        fig.savefig(triptych_path, dpi=300)
+        plt.close(fig)
 
 
 def parse_args():
