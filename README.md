@@ -458,15 +458,16 @@ python tools/decompress_gz_dataset.py
 脚本：`align_and_normalize.py`（位于 `AU3605_FinalPro` 根目录）  
 
 用途：  
-- 使用已训练好的 OD/Fovea 检测模型，对单张或多张图像做：  
-  - 视盘/黄斑方向的一致化（必要时自动左右翻转）；  
-  - 视盘–黄斑中点的空域对齐；  
-  - 颜色归一化到参考图 `utils/ref_img.jpg`。  
-- 并通过 `matplotlib` 给出“参考图 – 原始图 – 处理后图像”的三图对比。
+- 使用已训练好的 OD/Fovea 检测模型，对单张或多张眼底图做：  
+  - 先补黑边 + 缩放到统一大小（默认为 `256×256`）；  
+  - 根据 OD–Fovea 的相对位置自动判断是否需要左右翻转，保证视盘/黄斑方向一致；  
+  - 通过相似变换（旋转 + 等比缩放 + 平移），将当前图像中的 OD 和 Fovea 对齐到参考图 `utils/ref_img.jpg` 中对应位置，实现空域对齐；  
+  - 做颜色归一化，使整体色调接近参考图。  
+- 对每一张输入图生成一张三联图：左为参考图、中文件为原始图、右为对齐归一化后的结果，并保存在输出目录中（不再弹出 GUI 窗口）。
 
 默认目录约定（由脚本自动创建）：  
 - `alignment_demo_input/`：放入待处理的原始眼底图像；  
-- `alignment_demo_output/`：脚本运行后，处理好的图像会保存到这里，文件名与原图一致。
+- `alignment_demo_output/`：脚本运行后，处理好的图像与三联图会保存到这里。
 
 基本用法（在 `AU3605_FinalPro` 目录下）：
 
@@ -476,16 +477,23 @@ python align_and_normalize.py
 
 参数说明：
 
-- `--images-dir`：输入图像目录（默认 `None`；为 `None` 时使用 `alignment_demo_input/`）  
-- `--output-dir`：输出图像目录（默认 `None`；为 `None` 时使用 `alignment_demo_output/`）  
+- `--images-dir`：输入图像目录（默认 `alignment_demo_input`，可给相对或绝对路径）  
+- `--output-dir`：输出图像目录（默认 `alignment_demo_output`，不存在会自动创建）  
 - `--model-path`：OD/FCT 检测模型权重（默认 `logs/od_fct_model_best.pth`）  
 - `--device`：运行设备（`cpu` 或 `cuda`，默认 `cpu`；`cuda` 需要本机可用 CUDA）  
 - `--img-size`：对齐与归一化处理的目标边长（默认 `256`）
 
 效果：  
 - 自动加载 `logs/od_fct_model_best.pth` 作为检测模型；  
-- 对 `alignment_demo_input/` 中的所有支持格式图像（`.jpg/.png/...`）进行处理；  
-- 结果图像写入 `alignment_demo_output/`，并弹出一个三图对比窗口便于观察预处理效果。
+- 对 `images-dir`（默认 `alignment_demo_input/`）中所有支持格式图像（`.jpg/.jpeg/.png/.bmp/.tif/.tiff`）进行处理；  
+- 对每一张输入图：  
+  - 写出一张只做颜色归一化 + 空域对齐的结果图，文件名与原图一致，例如：  
+    - 输入：`alignment_demo_input/001.png`  
+    - 输出：`alignment_demo_output/001.png`  
+  - 额外写出一张三联图，文件名形如：  
+    - `alignment_demo_output/alignment_demo_triptych_001.png`  
+    - 三联图内容：左 = 参考图，中文件 = 原始图，右 = 对齐归一化后的结果。  
+- 全过程仅写文件，不会弹出 `matplotlib` 窗口，便于在无显示环境或批量处理时使用。
 
 ---
 
